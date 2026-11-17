@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { GBA_KEYS, dpadMaskForVector } from './keypad'
 import type { TouchTheme } from './touchThemes'
-import { hapticTick, type HapticStrength } from './haptics'
+import { hapticTick, ticksOnRelease, type HapticStrength } from './haptics'
 
 const DPAD = 'dpad'
 const DPAD_DIRECTIONS = GBA_KEYS.UP | GBA_KEYS.DOWN | GBA_KEYS.LEFT | GBA_KEYS.RIGHT
@@ -63,6 +63,7 @@ export function TouchControls({ theme, haptics, onChange }: { theme: TouchTheme;
     const root = rootRef.current
     if (!root) return
     const pointers = new Map<number, TrackedPointer>()
+    const tickOnRelease = ticksOnRelease()
     let reported = 0
     const report = () => {
       const mask = [...pointers.values()].reduce((combined, pointer) => combined | pointer.mask, 0)
@@ -70,7 +71,7 @@ export function TouchControls({ theme, haptics, onChange }: { theme: TouchTheme;
       const pressed = mask & ~reported
       // Tick for newly pressed buttons only: D-pad directions change too often while steering.
       const strength = hapticsRef.current
-      if ((pressed & ~DPAD_DIRECTIONS) !== 0 && strength !== 'off') hapticTick(strength)
+      if (!tickOnRelease && (pressed & ~DPAD_DIRECTIONS) !== 0 && strength !== 'off') hapticTick(strength)
       reported = mask
       root.querySelectorAll<HTMLElement>('[data-gba]').forEach((element) => {
         const key = element.dataset.gba
@@ -97,7 +98,13 @@ export function TouchControls({ theme, haptics, onChange }: { theme: TouchTheme;
       report()
     }
     const release = (event: PointerEvent) => {
-      if (pointers.delete(event.pointerId)) report()
+      const pointer = pointers.get(event.pointerId)
+      if (!pointer) return
+      // iOS only plays the haptic inside a gesture, which a lift (pointerup) is and a press is not.
+      const strength = hapticsRef.current
+      if (tickOnRelease && event.type === 'pointerup' && (pointer.mask & ~DPAD_DIRECTIONS) !== 0 && strength !== 'off') hapticTick(strength)
+      pointers.delete(event.pointerId)
+      report()
     }
     const releaseAll = () => {
       pointers.clear()

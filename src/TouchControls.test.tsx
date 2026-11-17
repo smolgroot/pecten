@@ -5,8 +5,8 @@ import { GBA_KEYS } from './keypad'
 import { TouchControls } from './TouchControls'
 import type { HapticStrength } from './haptics'
 
-vi.mock('./haptics', () => ({ hapticTick: vi.fn() }))
-const { hapticTick } = await import('./haptics')
+vi.mock('./haptics', () => ({ hapticTick: vi.fn(), ticksOnRelease: vi.fn(() => false) }))
+const { hapticTick, ticksOnRelease } = await import('./haptics')
 
 declare global {
   var IS_REACT_ACT_ENVIRONMENT: boolean
@@ -43,6 +43,7 @@ let onChange: ReturnType<typeof vi.fn<(pressed: number) => void>>
 
 beforeEach(() => {
   vi.mocked(hapticTick).mockClear()
+  vi.mocked(ticksOnRelease).mockReturnValue(false)
   onChange = vi.fn()
   container = document.body.appendChild(document.createElement('div'))
   root = createRoot(container)
@@ -211,5 +212,32 @@ describe('TouchControls', () => {
     render('off')
     pointer('pointerdown', 1, center('A'))
     expect(hapticTick).not.toHaveBeenCalled()
+  })
+
+  describe('without the Vibration API (iOS)', () => {
+    beforeEach(() => vi.mocked(ticksOnRelease).mockReturnValue(true))
+
+    it('ticks when a finger lifts off a button, not when it lands', () => {
+      render('light')
+      pointer('pointerdown', 1, center('A'))
+      expect(hapticTick).not.toHaveBeenCalled()
+      pointer('pointerup', 1, center('A'))
+      expect(hapticTick).toHaveBeenCalledTimes(1)
+      expect(hapticTick).toHaveBeenCalledWith('light')
+    })
+
+    it('does not tick for the D-pad, a cancelled touch, or with haptics off', () => {
+      render('light')
+      const dpad = center('dpad')
+      pointer('pointerdown', 1, { x: dpad.x + 30, y: dpad.y })
+      pointer('pointerup', 1, dpad)
+      pointer('pointerdown', 2, center('B'))
+      pointer('pointercancel', 2, center('B'))
+      expect(hapticTick).not.toHaveBeenCalled()
+      render('off')
+      pointer('pointerdown', 3, center('A'))
+      pointer('pointerup', 3, center('A'))
+      expect(hapticTick).not.toHaveBeenCalled()
+    })
   })
 })

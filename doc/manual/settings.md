@@ -46,7 +46,7 @@ The change shows at once, even while the game is paused, so you can compare the 
 
 ## Sound
 
-The speaker button mutes and unmutes the game; the slider sets the volume. Browsers only allow sound after you interact with the page, so audio starts on your first key press, click, or tap.
+The speaker button mutes and unmutes the game; the slider sets the volume. Browsers only allow sound after you interact with the page, so audio starts on your first key press, click, or tap. On iPhone and iPad, sound plays even with the Silent switch on (iOS 17 and later), like a video or music app.
 
 ## Touch controls
 
@@ -68,7 +68,7 @@ The D-pad never vibrates, because its direction changes too often while you stee
 
 ::: info Device support
 - **Android (Chrome and other Chromium browsers):** uses the phone's vibration motor. Nothing happens while the ringer is on Silent, or when *Settings → Vibration & haptics → Touch feedback* is off.
-- **iPhone (iOS 18 and later):** plays the system haptic. Light and Hard feel the same, and a tick plays when a finger lands on a button, not when it slides onto one.
+- **iPhone (iOS 18 and later):** plays the system haptic. Light and Hard feel the same. iOS only allows the haptic when a finger lifts, so the tick plays on release instead of on press. Nothing happens when *Settings → Sounds & Haptics → System Haptics* is off.
 - **Computers and browsers without vibration support:** the setting has no effect.
 :::
 

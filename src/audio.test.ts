@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { AudioOutput, WORKLET_SOURCE } from './audio'
+import { AudioOutput, WORKLET_SOURCE, resumeOnUserGesture } from './audio'
 
 const QUANTUM = 128
 const TARGET_BUFFERED = 3072
@@ -176,6 +176,32 @@ describe('AudioOutput', () => {
     expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:worklet')
     output.resume()
     expect(calls).toContain('resume')
+  })
+
+  it('resumes a context iOS interrupted', async () => {
+    const { calls } = stubWebAudio({ state: 'interrupted' })
+    const output = await AudioOutput.create(32768, 1)
+    output.resume()
+    expect(calls).toContain('resume')
+  })
+
+  it('asks iOS for the playback audio session so the silent switch does not mute games', async () => {
+    stubWebAudio()
+    const audioSession = { type: 'auto' }
+    vi.stubGlobal('navigator', { ...navigator, audioSession })
+    await AudioOutput.create(32768, 1)
+    expect(audioSession.type).toBe('playback')
+  })
+
+  it('resumes on gestures that unlock audio on touch screens, until detached', () => {
+    const target = new EventTarget()
+    const resume = vi.fn()
+    const detach = resumeOnUserGesture(target, resume)
+    for (const type of ['pointerup', 'touchend', 'click', 'keydown']) target.dispatchEvent(new Event(type))
+    expect(resume).toHaveBeenCalledTimes(4)
+    detach()
+    target.dispatchEvent(new Event('touchend'))
+    expect(resume).toHaveBeenCalledTimes(4)
   })
 
   it('does not resume a running context', async () => {
