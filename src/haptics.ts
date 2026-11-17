@@ -2,8 +2,9 @@
 //
 // Android and other Chromium browsers expose the Vibration API. iOS Safari (including installed
 // PWAs) has no Vibration API, but since iOS 18 toggling a `<input type="checkbox" switch>` plays
-// the system haptic, so a hidden one is clicked instead. Both only fire during a user gesture,
-// so on iOS a tick plays when a finger lands, not when it slides onto another button.
+// the system haptic, so a hidden one is clicked instead. WebKit only plays it during a user
+// gesture, and a touch `pointerdown` (touchstart) is not one: only its `pointerup`/`touchend` is.
+// So on iOS the tick plays when a finger lifts off a button (see `ticksOnRelease`).
 //
 // Chrome on Android passes the duration straight to the legacy one-shot vibrator at default
 // amplitude. The LRA in phones like the Pixel 8 needs ~20 ms to spin up, so shorter pulses are
@@ -35,6 +36,14 @@ function clickIosSwitch() {
     document.head.append(iosSwitch)
   }
   iosSwitch.click()
+}
+
+/**
+ * Whether ticks must wait for the finger to lift. Without the Vibration API (iOS) the haptic needs
+ * a user gesture, which a touch press does not grant but its release does.
+ */
+export function ticksOnRelease() {
+  return typeof navigator.vibrate !== 'function'
 }
 
 /** Plays a short tick for a button press. */

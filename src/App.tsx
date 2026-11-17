@@ -9,7 +9,7 @@ import { attachKeyboard } from './keypad'
 import { TouchControls } from './TouchControls'
 import { InstallPrompt } from './InstallPrompt'
 import { TOUCH_THEMES, isTouchTheme, type TouchTheme } from './touchThemes'
-import { AudioOutput } from './audio'
+import { AudioOutput, resumeOnUserGesture } from './audio'
 import { isHapticStrength, type HapticStrength } from './haptics'
 import { createScreenRenderer, isScreenShader, usesWebGl, type ScreenRenderer, type ScreenShader } from './screenShaders'
 import { FEATURED_GAMES, boxArtSources, buildShowcase, type ShowcaseItem } from './featuredGames'
@@ -754,13 +754,10 @@ function EmulatorPage({ game, status, errorLog, settings, onSettingsChange, onLo
       if (active) onRuntimeError(`Audio unavailable: ${describeError(error).message}`)
     })
     // Browsers only start audio after a user gesture.
-    const resume = () => output?.resume()
-    window.addEventListener('keydown', resume)
-    window.addEventListener('pointerdown', resume)
+    const detachUnlock = resumeOnUserGesture(window, () => output?.resume())
     return () => {
       active = false
-      window.removeEventListener('keydown', resume)
-      window.removeEventListener('pointerdown', resume)
+      detachUnlock()
       if (audioRef.current === output) audioRef.current = null
       output?.close()
     }

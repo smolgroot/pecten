@@ -89,6 +89,38 @@ class GbaAudioProcessor extends AudioWorkletProcessor {
 registerProcessor('gba-audio', GbaAudioProcessor)
 `
 
+// Events that count as a user gesture for unlocking audio. A touch `pointerdown` (touchstart)
+// does not: the HTML spec and WebKit only grant activation on its `pointerup`/`touchend`, and
+// the on-screen buttons call preventDefault, so no `click` follows a tap on them either.
+export const AUDIO_UNLOCK_EVENTS = ['keydown', 'pointerdown', 'pointerup', 'touchend', 'click'] as const
+
+/**
+ * Calls `resume` on every gesture that may unlock audio. Listens in the capture phase so that
+ * handlers which stop propagation cannot swallow the gesture. Returns a detach function.
+ */
+export function resumeOnUserGesture(target: EventTarget, resume: () => void) {
+  for (const type of AUDIO_UNLOCK_EVENTS) target.addEventListener(type, resume, { capture: true })
+  return () => {
+    for (const type of AUDIO_UNLOCK_EVENTS) target.removeEventListener(type, resume, { capture: true })
+  }
+}
+
+type AudioSessionNavigator = Navigator & { audioSession?: { type: string } }
+
+/**
+ * Safari (iOS 17+) routes Web Audio through the "ambient" session by default, which the ring/
+ * silent switch mutes. A game should play like a media app, so ask for the playback session.
+ */
+function requestPlaybackAudioSession() {
+  const session = (navigator as AudioSessionNavigator).audioSession
+  if (!session) return
+  try {
+    session.type = 'playback'
+  } catch {
+    // Older WebKit builds expose the object read-only; audio still works with the switch off.
+  }
+}
+
 export class AudioOutput {
   private readonly context: AudioContext
   private readonly node: AudioWorkletNode
@@ -102,6 +134,7 @@ export class AudioOutput {
 
   /** Throws when the browser lacks AudioWorklet support (for example, an insecure origin). */
   static async create(sampleRate: number, volume: number) {
+    requestPlaybackAudioSession()
     const context = new AudioContext({ sampleRate, latencyHint: 'interactive' })
     const moduleUrl = URL.createObjectURL(new Blob([WORKLET_SOURCE], { type: 'text/javascript' }))
     try {
@@ -136,9 +169,14 @@ export class AudioOutput {
     this.node.port.postMessage(floats, [floats.buffer])
   }
 
-  /** Browsers start audio suspended until a user gesture; call this from input handlers. */
+  /**
+   * Browsers start audio suspended until a user gesture; call this from input handlers.
+   * iOS also reports a non-standard `interrupted` state after a call, Siri, or a trip to the
+   * background, which likewise needs `resume()` from a gesture.
+   */
   resume() {
-    if (this.context.state === 'suspended') void this.context.resume()
+    const state: string = this.context.state
+    if (state !== 'running' && state !== 'closed') void this.context.resume()
   }
 
   close() {

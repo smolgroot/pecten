@@ -64,3 +64,16 @@ GBA_FUZZ_SCALE=50 RUSTFLAGS="-C overflow-checks=on" cargo test --release --test 
 ## Commercial ROMs
 
 Commercial ROMs must never be added to the repository; `rom/` is git-ignored for local experiments. Passing tests do not imply that any commercial game boots.
+
+### Smoke run
+
+`rust/examples/smoke.rs` runs every `.gba` file in a directory headlessly, so crashes in real games show up without committing a ROM:
+
+```sh
+cd rust
+cargo run --release --example smoke -- ../rom 600
+```
+
+Each ROM runs for the given number of frames (default 600) with a fixed input script (Start held for 4 frames and A for 4 frames in every 60). One table row per ROM reports the first core error and its frame, whether any frame differs from the first, the share of non-zero audio samples, the detected backup type, and speed relative to real time. Everything except speed is deterministic, so `--no-speed` produces output to diff between commits. The tool only reads from the given directory and writes nothing.
+
+A row describes one scripted run: no error and a changing frame do not mean a game is playable, so do not record results for commercial titles as compatibility claims.

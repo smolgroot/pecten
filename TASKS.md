@@ -387,7 +387,7 @@ Acceptance criteria:
 
 ### COMPAT-02: Local smoke run over a ROM directory
 
-**Status:** `NEXT`
+**Status:** `DONE`
 **Priority:** `P1`
 **Depends on:** ROM-02
 
@@ -399,6 +399,8 @@ Acceptance criteria:
 - Output is a stable plain-text table suitable for diffing between commits.
 - It reads ROMs only from the given path. Nothing it produces is committed except the tool itself. `rom/` stays git-ignored.
 - Document it in [Testing Strategy](doc/rust-core/testing-strategy.md#commercial-roms) without naming results for commercial titles as compatibility claims.
+
+`rust/examples/smoke.rs` implements this ([Testing Strategy](doc/rust-core/testing-strategy.md#smoke-run)); `--no-speed` drops the machine-dependent speed column so output can be diffed.
 
 ### BIOS-02: Close HLE BIOS compatibility gaps
 
